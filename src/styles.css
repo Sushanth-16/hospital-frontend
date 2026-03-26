@@ -593,6 +593,11 @@ textarea {
   flex-wrap: wrap;
 }
 
+.range-separator {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .slot-list {
   display: flex;
   flex-wrap: wrap;

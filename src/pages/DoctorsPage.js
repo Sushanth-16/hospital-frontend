@@ -29,11 +29,38 @@ const formatTimeLabel = (timeValue) => {
   return `${String(formattedHours).padStart(2, "0")}:${minutes} ${suffix}`;
 };
 
+const buildSlotsFromRange = (startTime, endTime, intervalMinutes) => {
+  if (!startTime || !endTime || !intervalMinutes) {
+    return [];
+  }
+
+  const [startHours, startMinutes] = startTime.split(":").map(Number);
+  const [endHours, endMinutes] = endTime.split(":").map(Number);
+  const startTotalMinutes = startHours * 60 + startMinutes;
+  const endTotalMinutes = endHours * 60 + endMinutes;
+
+  if (endTotalMinutes <= startTotalMinutes) {
+    return [];
+  }
+
+  const slots = [];
+
+  for (let currentMinutes = startTotalMinutes; currentMinutes < endTotalMinutes; currentMinutes += intervalMinutes) {
+    const hours = Math.floor(currentMinutes / 60);
+    const minutes = currentMinutes % 60;
+    slots.push(formatTimeLabel(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`));
+  }
+
+  return slots;
+};
+
 function DoctorsPage() {
   const adminUser = isAdmin();
   const [doctors, setDoctors] = useState([]);
   const [formData, setFormData] = useState(initialForm);
-  const [slotInput, setSlotInput] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [slotDuration, setSlotDuration] = useState("30");
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -63,7 +90,9 @@ function DoctorsPage() {
 
   const resetForm = () => {
     setFormData(initialForm);
-    setSlotInput("");
+    setStartTime("");
+    setEndTime("");
+    setSlotDuration("30");
     setEditingId(null);
   };
 
@@ -96,7 +125,9 @@ function DoctorsPage() {
       email: doctor.email,
       availabilitySlots: parseAvailabilitySlots(doctor.availabilitySlots).join(", ")
     });
-    setSlotInput("");
+    setStartTime("");
+    setEndTime("");
+    setSlotDuration("30");
     setEditingId(doctor.id);
   };
 
@@ -135,24 +166,26 @@ function DoctorsPage() {
 
   const handleAddSlot = () => {
     setError("");
+    const generatedSlots = buildSlotsFromRange(startTime, endTime, Number(slotDuration));
 
-    const formattedSlot = formatTimeLabel(slotInput);
-
-    if (!formattedSlot) {
-      setError("Please choose a time from the clock first.");
+    if (!startTime || !endTime) {
+      setError("Please choose both from and to times.");
       return;
     }
 
-    if (selectedSlots.includes(formattedSlot)) {
-      setError("That timing is already added for this doctor.");
+    if (generatedSlots.length === 0) {
+      setError("Please choose a valid time range.");
       return;
     }
+
+    const nextSlots = [...new Set([...selectedSlots, ...generatedSlots])];
 
     setFormData((current) => ({
       ...current,
-      availabilitySlots: [...selectedSlots, formattedSlot].join(", ")
+      availabilitySlots: nextSlots.join(", ")
     }));
-    setSlotInput("");
+    setStartTime("");
+    setEndTime("");
   };
 
   const handleRemoveSlot = (slotToRemove) => {
@@ -212,20 +245,35 @@ function DoctorsPage() {
             <label htmlFor="availability-slot-picker">Available Timings</label>
             <div className="availability-builder">
               <input
-                id="availability-slot-picker"
+                id="availability-start-picker"
                 type="time"
-                value={slotInput}
-                onChange={(event) => setSlotInput(event.target.value)}
+                value={startTime}
+                onChange={(event) => setStartTime(event.target.value)}
               />
+              <span className="range-separator">to</span>
+              <input
+                id="availability-end-picker"
+                type="time"
+                value={endTime}
+                onChange={(event) => setEndTime(event.target.value)}
+              />
+              <select
+                value={slotDuration}
+                onChange={(event) => setSlotDuration(event.target.value)}
+              >
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="60">60 min</option>
+              </select>
               <button
                 type="button"
                 className="secondary-button"
                 onClick={handleAddSlot}
               >
-                Add Slot
+                Add Range
               </button>
             </div>
-            <p className="helper-inline">Use the clock picker to add each doctor time slot.</p>
+            <p className="helper-inline">Pick a from and to time to generate appointment slots.</p>
             {selectedSlots.length > 0 ? (
               <div className="slot-list">
                 {selectedSlots.map((slot) => (

@@ -26,6 +26,31 @@ const formatTimeLabel = (timeValue) => {
   return `${String(formattedHours).padStart(2, "0")}:${minutes} ${suffix}`;
 };
 
+const buildSlotsFromRange = (startTime, endTime, intervalMinutes) => {
+  if (!startTime || !endTime || !intervalMinutes) {
+    return [];
+  }
+
+  const [startHours, startMinutes] = startTime.split(":").map(Number);
+  const [endHours, endMinutes] = endTime.split(":").map(Number);
+  const startTotalMinutes = startHours * 60 + startMinutes;
+  const endTotalMinutes = endHours * 60 + endMinutes;
+
+  if (endTotalMinutes <= startTotalMinutes) {
+    return [];
+  }
+
+  const slots = [];
+
+  for (let currentMinutes = startTotalMinutes; currentMinutes < endTotalMinutes; currentMinutes += intervalMinutes) {
+    const hours = Math.floor(currentMinutes / 60);
+    const minutes = currentMinutes % 60;
+    slots.push(formatTimeLabel(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`));
+  }
+
+  return slots;
+};
+
 const resolveCurrentDoctor = (user, doctors) => {
   if (!user || user.role !== "DOCTOR") {
     return null;
@@ -48,7 +73,9 @@ function DashboardPage() {
     billing: 0
   });
   const [currentDoctor, setCurrentDoctor] = useState(null);
-  const [slotInput, setSlotInput] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [slotDuration, setSlotDuration] = useState("30");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
@@ -107,24 +134,26 @@ function DashboardPage() {
   const handleAddDoctorSlot = () => {
     setError("");
     setStatus("");
+    const generatedSlots = buildSlotsFromRange(startTime, endTime, Number(slotDuration));
 
-    const formattedSlot = formatTimeLabel(slotInput);
-
-    if (!formattedSlot) {
-      setError("Please choose a time from the clock first.");
+    if (!startTime || !endTime) {
+      setError("Please choose both from and to times.");
       return;
     }
 
-    if (doctorSlots.includes(formattedSlot)) {
-      setError("That timing is already added.");
+    if (generatedSlots.length === 0) {
+      setError("Please choose a valid time range.");
       return;
     }
+
+    const nextSlots = [...new Set([...doctorSlots, ...generatedSlots])];
 
     setCurrentDoctor((current) => ({
       ...current,
-      availabilitySlots: [...doctorSlots, formattedSlot].join(", ")
+      availabilitySlots: nextSlots.join(", ")
     }));
-    setSlotInput("");
+    setStartTime("");
+    setEndTime("");
   };
 
   const handleRemoveDoctorSlot = (slotToRemove) => {
@@ -249,17 +278,33 @@ function DashboardPage() {
             <input
               id="doctor-dashboard-slot-picker"
               type="time"
-              value={slotInput}
-              onChange={(event) => setSlotInput(event.target.value)}
+              value={startTime}
+              onChange={(event) => setStartTime(event.target.value)}
             />
+            <span className="range-separator">to</span>
+            <input
+              id="doctor-dashboard-slot-picker-end"
+              type="time"
+              value={endTime}
+              onChange={(event) => setEndTime(event.target.value)}
+            />
+            <select
+              value={slotDuration}
+              onChange={(event) => setSlotDuration(event.target.value)}
+            >
+              <option value="15">15 min</option>
+              <option value="30">30 min</option>
+              <option value="60">60 min</option>
+            </select>
             <button
               type="button"
               className="secondary-button"
               onClick={handleAddDoctorSlot}
             >
-              Add Slot
+              Add Range
             </button>
           </div>
+          <p className="helper-inline">Choose from and to times to generate your bookable slots.</p>
           {doctorSlots.length > 0 ? (
             <div className="slot-list dashboard-slot-list">
               {doctorSlots.map((slot) => (
