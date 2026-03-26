@@ -26,6 +26,19 @@ const formatTimeLabel = (timeValue) => {
   return `${String(formattedHours).padStart(2, "0")}:${minutes} ${suffix}`;
 };
 
+const resolveCurrentDoctor = (user, doctors) => {
+  if (!user || user.role !== "DOCTOR") {
+    return null;
+  }
+
+  return (
+    doctors.find((doctor) => doctor.id === user.referenceId) ||
+    doctors.find((doctor) => doctor.email === user.email) ||
+    doctors.find((doctor) => doctor.name === user.name) ||
+    null
+  );
+};
+
 function DashboardPage() {
   const user = getStoredUser();
   const [stats, setStats] = useState({
@@ -77,8 +90,8 @@ function DashboardPage() {
           billing: visibleBillings.reduce((total, billing) => total + billing.amount, 0)
         });
 
-        if (user?.role === "DOCTOR" && user.referenceId) {
-          const doctor = await doctorService.getById(user.referenceId);
+        if (user?.role === "DOCTOR") {
+          const doctor = resolveCurrentDoctor(user, doctors);
           setCurrentDoctor(doctor);
         }
       } catch (loadError) {
