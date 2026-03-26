@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
+  process.env.REACT_APP_API_BASE_URL ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:8080" : "");
 
 const TOKEN_KEY = "hms-token";
 const USER_KEY = "hms-user";
@@ -42,6 +43,9 @@ export const isDoctor = () => getStoredUser()?.role === "DOCTOR";
 export const isPatient = () => getStoredUser()?.role === "PATIENT";
 
 export const getErrorMessage = (error) =>
+  (!API_BASE_URL && process.env.NODE_ENV !== "development"
+    ? "Frontend API URL is not configured. Set REACT_APP_API_BASE_URL in Vercel."
+    : null) ||
   error.response?.data?.message ||
   error.response?.data?.error ||
   error.message ||
