@@ -12,10 +12,28 @@ const initialForm = {
   availabilitySlots: ""
 };
 
+const parseAvailabilitySlots = (availabilitySlots) =>
+  (Array.isArray(availabilitySlots) ? availabilitySlots : (availabilitySlots || "").split(","))
+    .map((slot) => slot.trim())
+    .filter(Boolean);
+
+const formatTimeLabel = (timeValue) => {
+  if (!timeValue) {
+    return "";
+  }
+
+  const [hoursText, minutes] = timeValue.split(":");
+  const hours = Number(hoursText);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const formattedHours = hours % 12 || 12;
+  return `${String(formattedHours).padStart(2, "0")}:${minutes} ${suffix}`;
+};
+
 function DoctorsPage() {
   const adminUser = isAdmin();
   const [doctors, setDoctors] = useState([]);
   const [formData, setFormData] = useState(initialForm);
+  const [slotInput, setSlotInput] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -45,6 +63,7 @@ function DoctorsPage() {
 
   const resetForm = () => {
     setFormData(initialForm);
+    setSlotInput("");
     setEditingId(null);
   };
 
@@ -75,10 +94,9 @@ function DoctorsPage() {
       specialization: doctor.specialization,
       phone: doctor.phone,
       email: doctor.email,
-      availabilitySlots: Array.isArray(doctor.availabilitySlots)
-        ? doctor.availabilitySlots.join(", ")
-        : doctor.availabilitySlots || ""
+      availabilitySlots: parseAvailabilitySlots(doctor.availabilitySlots).join(", ")
     });
+    setSlotInput("");
     setEditingId(doctor.id);
   };
 
@@ -112,6 +130,39 @@ function DoctorsPage() {
     { key: "phone", header: "Phone" },
     { key: "email", header: "Email" }
   ];
+
+  const selectedSlots = parseAvailabilitySlots(formData.availabilitySlots);
+
+  const handleAddSlot = () => {
+    setError("");
+
+    const formattedSlot = formatTimeLabel(slotInput);
+
+    if (!formattedSlot) {
+      setError("Please choose a time from the clock first.");
+      return;
+    }
+
+    if (selectedSlots.includes(formattedSlot)) {
+      setError("That timing is already added for this doctor.");
+      return;
+    }
+
+    setFormData((current) => ({
+      ...current,
+      availabilitySlots: [...selectedSlots, formattedSlot].join(", ")
+    }));
+    setSlotInput("");
+  };
+
+  const handleRemoveSlot = (slotToRemove) => {
+    setFormData((current) => ({
+      ...current,
+      availabilitySlots: parseAvailabilitySlots(current.availabilitySlots)
+        .filter((slot) => slot !== slotToRemove)
+        .join(", ")
+    }));
+  };
 
   return (
     <div>
@@ -155,13 +206,44 @@ function DoctorsPage() {
               value={formData.email}
               onChange={handleChange}
             />
-            <FormInput
-              label="Available Timings"
-              name="availabilitySlots"
-              value={formData.availabilitySlots}
-              onChange={handleChange}
-              placeholder="09:00 AM, 10:30 AM, 02:00 PM"
-            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="availability-slot-picker">Available Timings</label>
+            <div className="availability-builder">
+              <input
+                id="availability-slot-picker"
+                type="time"
+                value={slotInput}
+                onChange={(event) => setSlotInput(event.target.value)}
+              />
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleAddSlot}
+              >
+                Add Slot
+              </button>
+            </div>
+            <p className="helper-inline">Use the clock picker to add each doctor time slot.</p>
+            {selectedSlots.length > 0 ? (
+              <div className="slot-list">
+                {selectedSlots.map((slot) => (
+                  <span key={slot} className="slot-pill">
+                    {slot}
+                    <button
+                      type="button"
+                      className="slot-remove-button"
+                      onClick={() => handleRemoveSlot(slot)}
+                    >
+                      Remove
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="helper-inline">No timings added yet.</p>
+            )}
           </div>
 
           <div className="form-actions">

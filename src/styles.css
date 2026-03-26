@@ -586,6 +586,40 @@ textarea {
   margin-top: 20px;
 }
 
+.availability-builder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.slot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: var(--primary-dark);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.slot-remove-button {
+  border: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(29, 78, 216, 0.14);
+  color: var(--primary-dark);
+  cursor: pointer;
+}
+
 .symptom-groups {
   display: grid;
   gap: 18px;
