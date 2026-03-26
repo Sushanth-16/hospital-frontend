@@ -166,7 +166,7 @@ function AppointmentsPage() {
   });
 
   const selectedDisease = formData.disease || currentPatient?.disease || "";
-  const matchedDoctors = currentPatient
+  const matchedDoctors = selectedDisease
     ? doctors.filter((doctor) => doctor.specialization === selectedDisease)
     : doctors;
   const selectedDoctor = doctors.find((doctor) => Number(formData.doctorId) === doctor.id);
@@ -231,7 +231,7 @@ function AppointmentsPage() {
       {status && <div className="status-message success">{status}</div>}
       {error && <div className="status-message error">{error}</div>}
 
-      {user?.role === "PATIENT" && currentPatient && (
+      {user?.role === "PATIENT" && (
         <div className="panel">
           <h3>Request Appointment</h3>
           {savedSymptomSuggestion?.disease && (
@@ -242,8 +242,10 @@ function AppointmentsPage() {
           )}
           <p className="helper-inline">
             Your current disease category is{" "}
-            <strong>{currentPatient.disease || savedSymptomSuggestion?.disease || "not set"}</strong>.
-            Only doctors with that specialization are shown.
+            <strong>{currentPatient?.disease || savedSymptomSuggestion?.disease || "not set"}</strong>.
+            {selectedDisease
+              ? " Only doctors with that specialization are shown."
+              : " Select a disease to narrow the doctor list, or pick from all available doctors."}
           </p>
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
