@@ -9,6 +9,23 @@ import {
   patientService
 } from "../services/api";
 
+const parseAvailabilitySlots = (availabilitySlots) =>
+  (Array.isArray(availabilitySlots) ? availabilitySlots : (availabilitySlots || "").split(","))
+    .map((slot) => slot.trim())
+    .filter(Boolean);
+
+const formatTimeLabel = (timeValue) => {
+  if (!timeValue) {
+    return "";
+  }
+
+  const [hoursText, minutes] = timeValue.split(":");
+  const hours = Number(hoursText);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const formattedHours = hours % 12 || 12;
+  return `${String(formattedHours).padStart(2, "0")}:${minutes} ${suffix}`;
+};
+
 function DashboardPage() {
   const user = getStoredUser();
   const [stats, setStats] = useState({
@@ -17,12 +34,16 @@ function DashboardPage() {
     appointments: 0,
     billing: 0
   });
+  const [currentDoctor, setCurrentDoctor] = useState(null);
+  const [slotInput, setSlotInput] = useState("");
+  const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     const loadStats = async () => {
       try {
         setError("");
+        setStatus("");
         const [patients, doctors, appointments, billings] = await Promise.all([
           patientService.getAll(),
           doctorService.getAll(),
@@ -55,6 +76,11 @@ function DashboardPage() {
           appointments: visibleAppointments.length,
           billing: visibleBillings.reduce((total, billing) => total + billing.amount, 0)
         });
+
+        if (user?.role === "DOCTOR" && user.referenceId) {
+          const doctor = await doctorService.getById(user.referenceId);
+          setCurrentDoctor(doctor);
+        }
       } catch (loadError) {
         setError(getErrorMessage(loadError));
       }
@@ -62,6 +88,55 @@ function DashboardPage() {
 
     loadStats();
   }, [user?.referenceId, user?.role]);
+
+  const doctorSlots = parseAvailabilitySlots(currentDoctor?.availabilitySlots);
+
+  const handleAddDoctorSlot = () => {
+    setError("");
+    setStatus("");
+
+    const formattedSlot = formatTimeLabel(slotInput);
+
+    if (!formattedSlot) {
+      setError("Please choose a time from the clock first.");
+      return;
+    }
+
+    if (doctorSlots.includes(formattedSlot)) {
+      setError("That timing is already added.");
+      return;
+    }
+
+    setCurrentDoctor((current) => ({
+      ...current,
+      availabilitySlots: [...doctorSlots, formattedSlot].join(", ")
+    }));
+    setSlotInput("");
+  };
+
+  const handleRemoveDoctorSlot = (slotToRemove) => {
+    setCurrentDoctor((current) => ({
+      ...current,
+      availabilitySlots: parseAvailabilitySlots(current?.availabilitySlots)
+        .filter((slot) => slot !== slotToRemove)
+        .join(", ")
+    }));
+  };
+
+  const handleSaveDoctorAvailability = async () => {
+    if (!currentDoctor?.id) {
+      return;
+    }
+
+    try {
+      setError("");
+      await doctorService.update(currentDoctor.id, currentDoctor);
+      setStatus("Your available timings were updated successfully.");
+    } catch (saveError) {
+      setStatus("");
+      setError(getErrorMessage(saveError));
+    }
+  };
 
   return (
     <div
@@ -76,6 +151,7 @@ function DashboardPage() {
         </div>
       </div>
 
+      {status && <div className="status-message success">{status}</div>}
       {error && <div className="status-message error">{error}</div>}
 
       {user?.role === "PATIENT" && (
@@ -149,6 +225,57 @@ function DashboardPage() {
             "Choose the right specialist, complete payment, and follow your appointment request through approval to confirmation."}
         </p>
       </div>
+
+      {user?.role === "DOCTOR" && currentDoctor && (
+        <div className="panel">
+          <h3>My Availability</h3>
+          <p className="helper-inline">
+            Set the timings when patients are allowed to request appointments with you.
+          </p>
+          <div className="availability-builder">
+            <input
+              id="doctor-dashboard-slot-picker"
+              type="time"
+              value={slotInput}
+              onChange={(event) => setSlotInput(event.target.value)}
+            />
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleAddDoctorSlot}
+            >
+              Add Slot
+            </button>
+          </div>
+          {doctorSlots.length > 0 ? (
+            <div className="slot-list dashboard-slot-list">
+              {doctorSlots.map((slot) => (
+                <span key={slot} className="slot-pill">
+                  {slot}
+                  <button
+                    type="button"
+                    className="slot-remove-button"
+                    onClick={() => handleRemoveDoctorSlot(slot)}
+                  >
+                    Remove
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="helper-inline">No timings added yet.</p>
+          )}
+          <div className="form-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handleSaveDoctorAvailability}
+            >
+              Save Availability
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
