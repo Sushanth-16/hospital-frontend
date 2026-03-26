@@ -102,6 +102,12 @@ export const doctorService = {
     const response = await api.put(`/doctors/${id}`, payload);
     return response.data;
   },
+  getAvailability: async (id, date) => {
+    const response = await api.get(`/doctors/${id}/availability`, {
+      params: { date }
+    });
+    return response.data;
+  },
   remove: async (id) => {
     const response = await api.delete(`/doctors/${id}`);
     return response.data;

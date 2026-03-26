@@ -19,23 +19,6 @@ const initialForm = {
   appointmentTime: ""
 };
 
-const getDoctorAvailabilitySlots = (doctor) => {
-  const rawSlots = doctor?.availabilitySlots;
-
-  if (Array.isArray(rawSlots)) {
-    return rawSlots.filter(Boolean);
-  }
-
-  if (typeof rawSlots === "string") {
-    return rawSlots
-      .split(",")
-      .map((slot) => slot.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-};
-
 function AppointmentsPage() {
   const user = getStoredUser();
   const savedSymptomSuggestion = (() => {
@@ -52,6 +35,7 @@ function AppointmentsPage() {
   const [doctors, setDoctors] = useState([]);
   const [currentPatient, setCurrentPatient] = useState(null);
   const [currentDoctor, setCurrentDoctor] = useState(null);
+  const [availableSlots, setAvailableSlots] = useState([]);
   const [formData, setFormData] = useState({
     ...initialForm,
     disease: savedSymptomSuggestion?.disease || ""
@@ -97,9 +81,31 @@ function AppointmentsPage() {
     setFormData((current) => ({
       ...current,
       [name]: value,
-      ...(name === "doctorId" ? { appointmentTime: "" } : {})
+      ...((name === "doctorId" || name === "appointmentDate") ? { appointmentTime: "" } : {})
     }));
   };
+
+  useEffect(() => {
+    const loadAvailability = async () => {
+      if (!formData.doctorId || !formData.appointmentDate) {
+        setAvailableSlots([]);
+        return;
+      }
+
+      try {
+        const response = await doctorService.getAvailability(
+          Number(formData.doctorId),
+          formData.appointmentDate
+        );
+        setAvailableSlots(response.availableSlots || []);
+      } catch (availabilityError) {
+        setAvailableSlots([]);
+        setError(getErrorMessage(availabilityError));
+      }
+    };
+
+    loadAvailability();
+  }, [formData.appointmentDate, formData.doctorId]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -197,7 +203,6 @@ function AppointmentsPage() {
     ? doctors.filter((doctor) => doctor.specialization === selectedDisease)
     : doctors;
   const selectedDoctor = doctors.find((doctor) => Number(formData.doctorId) === doctor.id);
-  const selectedDoctorAvailability = getDoctorAvailabilitySlots(selectedDoctor);
 
   const columns = [
     {
@@ -309,14 +314,14 @@ function AppointmentsPage() {
                 type="select"
                 value={formData.appointmentTime}
                 onChange={handleChange}
-                options={selectedDoctorAvailability.map((slot) => ({
+                options={availableSlots.map((slot) => ({
                   value: slot,
                   label: slot
                 }))}
-                required={selectedDoctorAvailability.length > 0}
+                required={availableSlots.length > 0}
               />
             </div>
-            {formData.doctorId && selectedDoctorAvailability.length === 0 && (
+            {formData.doctorId && formData.appointmentDate && availableSlots.length === 0 && (
               <p className="helper-inline">
                 This doctor does not have any available timings configured yet.
               </p>
