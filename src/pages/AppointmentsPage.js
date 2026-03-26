@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DataTable from "../components/DataTable";
 import FormInput from "../components/FormInput";
+import { SYMPTOM_STORAGE_KEY } from "../constants/aiSymptoms";
 import { specializationOptions } from "../constants/specializations";
 import {
   appointmentService,
@@ -20,13 +21,24 @@ const initialForm = {
 
 function AppointmentsPage() {
   const user = getStoredUser();
+  const savedSymptomSuggestion = (() => {
+    try {
+      const savedValue = localStorage.getItem(SYMPTOM_STORAGE_KEY);
+      return savedValue ? JSON.parse(savedValue) : null;
+    } catch (error) {
+      return null;
+    }
+  })();
   const [appointments, setAppointments] = useState([]);
   const [billings, setBillings] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [currentPatient, setCurrentPatient] = useState(null);
   const [currentDoctor, setCurrentDoctor] = useState(null);
-  const [formData, setFormData] = useState(initialForm);
+  const [formData, setFormData] = useState({
+    ...initialForm,
+    disease: savedSymptomSuggestion?.disease || ""
+  });
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
@@ -96,6 +108,7 @@ function AppointmentsPage() {
       });
       setStatus("Appointment request sent to the doctor.");
       setFormData(initialForm);
+      localStorage.removeItem(SYMPTOM_STORAGE_KEY);
       loadData();
     } catch (submitError) {
       setStatus("");
@@ -221,9 +234,16 @@ function AppointmentsPage() {
       {user?.role === "PATIENT" && currentPatient && (
         <div className="panel">
           <h3>Request Appointment</h3>
+          {savedSymptomSuggestion?.disease && (
+            <div className="status-message success">
+              AI symptom checker suggested <strong>{savedSymptomSuggestion.disease}</strong>. You
+              can keep it or choose a different disease category before sending your request.
+            </div>
+          )}
           <p className="helper-inline">
-            Your disease category is <strong>{currentPatient.disease}</strong>. Only doctors with
-            that specialization are shown.
+            Your current disease category is{" "}
+            <strong>{currentPatient.disease || savedSymptomSuggestion?.disease || "not set"}</strong>.
+            Only doctors with that specialization are shown.
           </p>
           <form onSubmit={handleSubmit}>
             <div className="form-grid">

@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AISymptomPage from "./pages/AISymptomPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
 import BillingPage from "./pages/BillingPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -25,6 +26,7 @@ function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="ai-symptom" element={<AISymptomPage />} />
           <Route path="patients" element={<PatientsPage />} />
           <Route path="doctors" element={<DoctorsPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
