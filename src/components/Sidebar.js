@@ -6,7 +6,9 @@ function Sidebar() {
   const user = getStoredUser();
   const links = [{ label: "Dashboard", path: "/dashboard" }];
 
-  links.push({ label: "AI Symptom", path: "/ai-symptom" });
+  if (user?.role === "PATIENT") {
+    links.push({ label: "AI Symptom", path: "/ai-symptom" });
+  }
 
   if (user?.role === "ADMIN") {
     links.push(

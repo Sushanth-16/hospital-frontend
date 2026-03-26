@@ -8,7 +8,8 @@ const initialForm = {
   name: "",
   specialization: "",
   phone: "",
-  email: ""
+  email: "",
+  availabilitySlots: ""
 };
 
 function DoctorsPage() {
@@ -73,7 +74,10 @@ function DoctorsPage() {
       name: doctor.name,
       specialization: doctor.specialization,
       phone: doctor.phone,
-      email: doctor.email
+      email: doctor.email,
+      availabilitySlots: Array.isArray(doctor.availabilitySlots)
+        ? doctor.availabilitySlots.join(", ")
+        : doctor.availabilitySlots || ""
     });
     setEditingId(doctor.id);
   };
@@ -97,6 +101,14 @@ function DoctorsPage() {
     { key: "name", header: "Name" },
     { key: "specialization", header: "Specialization" },
     { key: "consultationFee", header: "Fee" },
+    {
+      key: "availabilitySlots",
+      header: "Available Timings",
+      render: (doctor) =>
+        Array.isArray(doctor.availabilitySlots)
+          ? doctor.availabilitySlots.join(", ")
+          : doctor.availabilitySlots || "-"
+    },
     { key: "phone", header: "Phone" },
     { key: "email", header: "Email" }
   ];
@@ -142,6 +154,13 @@ function DoctorsPage() {
               type="email"
               value={formData.email}
               onChange={handleChange}
+            />
+            <FormInput
+              label="Available Timings"
+              name="availabilitySlots"
+              value={formData.availabilitySlots}
+              onChange={handleChange}
+              placeholder="09:00 AM, 10:30 AM, 02:00 PM"
             />
           </div>
 

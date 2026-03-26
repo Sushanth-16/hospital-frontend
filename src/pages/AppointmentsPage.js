@@ -19,6 +19,23 @@ const initialForm = {
   appointmentTime: ""
 };
 
+const getDoctorAvailabilitySlots = (doctor) => {
+  const rawSlots = doctor?.availabilitySlots;
+
+  if (Array.isArray(rawSlots)) {
+    return rawSlots.filter(Boolean);
+  }
+
+  if (typeof rawSlots === "string") {
+    return rawSlots
+      .split(",")
+      .map((slot) => slot.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 function AppointmentsPage() {
   const user = getStoredUser();
   const savedSymptomSuggestion = (() => {
@@ -77,7 +94,11 @@ function AppointmentsPage() {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+    setFormData((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === "doctorId" ? { appointmentTime: "" } : {})
+    }));
   };
 
   const handleSubmit = async (event) => {
@@ -90,6 +111,12 @@ function AppointmentsPage() {
       if (!nextDisease) {
         setStatus("");
         setError("Please select a disease before requesting an appointment.");
+        return;
+      }
+
+      if (!formData.appointmentTime) {
+        setStatus("");
+        setError("Please select an available doctor timing before requesting an appointment.");
         return;
       }
 
@@ -170,6 +197,7 @@ function AppointmentsPage() {
     ? doctors.filter((doctor) => doctor.specialization === selectedDisease)
     : doctors;
   const selectedDoctor = doctors.find((doctor) => Number(formData.doctorId) === doctor.id);
+  const selectedDoctorAvailability = getDoctorAvailabilitySlots(selectedDoctor);
 
   const columns = [
     {
@@ -278,11 +306,21 @@ function AppointmentsPage() {
               <FormInput
                 label="Time"
                 name="appointmentTime"
-                type="time"
+                type="select"
                 value={formData.appointmentTime}
                 onChange={handleChange}
+                options={selectedDoctorAvailability.map((slot) => ({
+                  value: slot,
+                  label: slot
+                }))}
+                required={selectedDoctorAvailability.length > 0}
               />
             </div>
+            {formData.doctorId && selectedDoctorAvailability.length === 0 && (
+              <p className="helper-inline">
+                This doctor does not have any available timings configured yet.
+              </p>
+            )}
             {selectedDoctor && (
               <p className="helper-inline">
                 Amount to pay: <strong>Rs. {selectedDoctor.consultationFee}</strong>
